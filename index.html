@@ -1,0 +1,2145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glitch</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #0d1117;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* subtle noise-style background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(0,180,255,0.055) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 90%, rgba(0,80,200,0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* ── top bar ── */
+    #topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: rgba(13,17,23,0.85);
+    }
+    #topbar-name {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #00d2ff;
+      text-transform: uppercase;
+      min-width: 100px;
+    }
+    #topbar-progress {
+      flex: 1;
+      margin: 0 24px;
+      height: 5px;
+      background: rgba(0,210,255,0.06);
+      border-radius: 10px;
+      overflow: visible;
+      border: 1px solid rgba(0,210,255,0.22);
+      box-shadow: 0 0 8px rgba(0,210,255,0.12), inset 0 0 4px rgba(0,0,0,0.4);
+      position: relative;
+    }
+    #topbar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0099bb, #00d2ff, #55e8ff);
+      border-radius: 10px;
+      transition: width 0.6s ease;
+      width: 0%;
+      box-shadow: 0 0 6px 1px rgba(0,210,255,0.35), 0 0 12px 2px rgba(0,210,255,0.15);
+      position: relative;
+    }
+    #topbar-fill::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 50%;
+      transform: translateY(-50%);
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #cff8ff;
+      box-shadow: 0 0 5px 2px rgba(0,210,255,0.55), 0 0 10px 3px rgba(0,210,255,0.25);
+    }
+    #topbar-level {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(0,210,255,0.55);
+      letter-spacing: 2px;
+      min-width: 70px;
+      text-align: right;
+      text-transform: uppercase;
+    }
+
+    /* ── particles ── */
+    .particles { position: fixed; inset: 0; pointer-events: none; }
+    .p {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(0,210,255,0.25);
+      animation: rise linear infinite;
+    }
+    @keyframes rise {
+      0%   { transform: translateY(0) scale(1); opacity: 0; }
+      10%  { opacity: 0.5; }
+      90%  { opacity: 0.2; }
+      100% { transform: translateY(-100vh) scale(0.2); opacity: 0; }
+    }
+
+    /* ── main area ── */
+    #app {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding-top: 44px;
+      min-height: 100vh;
+    }
+
+    /* ── glass card ── */
+    .card {
+      position: relative;
+      z-index: 10;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(0,210,255,0.18);
+      border-radius: 22px;
+      padding: 44px 48px;
+      width: 100%;
+      max-width: 480px;
+      margin: 20px;
+      text-align: center;
+      animation: fadeUp 0.4s ease both;
+    }
+    .card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 18%; right: 18%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,210,255,0.5), transparent);
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── landing ── */
+    .brand {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: 5px;
+      color: #00d2ff;
+      text-transform: uppercase;
+    }
+    .brand-eyebrow {
+      font-size: 11px;
+      letter-spacing: 7px;
+      color: rgba(0,210,255,0.35);
+      text-transform: uppercase;
+      margin-top: 5px;
+    }
+    .brain-icon { font-size: 50px; margin: 26px 0 18px; display: block; }
+    .tagline { font-size: 13px; color: rgba(255,255,255,0.32); margin-bottom: 32px; }
+
+    .loading-bar-track {
+      height: 3px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .loading-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #00d2ff;
+      border-radius: 10px;
+      transition: width 0.08s linear;
+    }
+    .loading-label {
+      font-size: 11px;
+      color: rgba(0,210,255,0.38);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+
+    /* ── level card ── */
+    .level-chip {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(0,210,255,0.08);
+      border: 1px solid rgba(0,210,255,0.22);
+      border-radius: 100px;
+      padding: 5px 18px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #00d2ff;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .level-num {
+      font-size: 56px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .level-sub { font-size: 13px; color: rgba(255,255,255,0.28); }
+
+    /* ── puzzle ── */
+    .puzzle-eyebrow {
+      font-size: 11px;
+      letter-spacing: 4px;
+      color: rgba(255,255,255,0.28);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .puzzle-word {
+      font-size: 40px;
+      font-weight: 700;
+      letter-spacing: 10px;
+      color: #00d2ff;
+      font-family: 'Courier New', monospace;
+      margin-bottom: 26px;
+    }
+    .divider { height: 1px; background: rgba(0,210,255,0.07); margin: 18px 0; }
+
+    .ans-input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(0,210,255,0.2);
+      border-radius: 12px;
+      padding: 15px 20px;
+      font-size: 22px;
+      font-family: 'Courier New', monospace;
+      color: #00d2ff;
+      text-align: center;
+      letter-spacing: 5px;
+      outline: none;
+      margin-bottom: 14px;
+      transition: border-color 0.2s;
+    }
+    .ans-input:focus  { border-color: rgba(0,210,255,0.55); }
+    .ans-input.correct { border-color: #00c864; color: #00c864; background: rgba(0,200,100,0.05); }
+    .ans-input.wrong   { border-color: #ff4444; color: #ff6666; background: rgba(255,50,50,0.05); }
+
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(0,210,255,0.1);
+      border: 1px solid rgba(0,210,255,0.3);
+      color: #00d2ff;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .submit-btn:hover { background: rgba(0,210,255,0.2); }
+
+    .hint { font-size: 12px; color: rgba(255,255,255,0.22); margin-top: 14px; }
+
+    /* ── complete ── */
+    .complete-icon { font-size: 54px; margin-bottom: 12px; display: block; }
+    .complete-title { font-size: 26px; font-weight: 800; color: #00c864; margin-bottom: 6px; }
+    .complete-sub { font-size: 13px; color: rgba(255,255,255,0.3); margin-bottom: 22px; }
+    .score-row {
+      display: flex; justify-content: space-between;
+      font-size: 13px; color: rgba(255,255,255,0.3); margin-bottom: 8px;
+    }
+    .score-val { color: #00d2ff; font-weight: 600; }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-8px); }
+      60%      { transform: translateX(8px); }
+      80%      { transform: translateX(-4px); }
+    }
+    .shake { animation: shake 0.4s ease; }
+
+    @keyframes screenJolt {
+      0%   { transform: translate(0, 0); }
+      15%  { transform: translate(-4px, 2px); }
+      30%  { transform: translate(4px, -2px); }
+      45%  { transform: translate(-3px, 1px); }
+      60%  { transform: translate(3px, -1px); }
+      75%  { transform: translate(-1px, 1px); }
+      100% { transform: translate(0, 0); }
+    }
+    .screen-jolt { animation: screenJolt 0.35s ease; }
+
+    @keyframes panicPulse {
+      from { opacity: 1;    transform: scale(1); }
+      to   { opacity: 0.75; transform: scale(1.02); }
+    }
+
+    @keyframes swShift {
+      0%   { transform: translateX(0);     text-shadow: 0 0 0px rgba(255,60,60,0); }
+      15%  { transform: translateX(-10px); text-shadow: -4px 0 16px rgba(255,40,40,0.9); }
+      35%  { transform: translateX(10px);  text-shadow:  4px 0 16px rgba(255,40,40,0.9); }
+      55%  { transform: translateX(-5px);  text-shadow: -2px 0 10px rgba(255,40,40,0.6); }
+      75%  { transform: translateX(4px);   text-shadow:  2px 0 10px rgba(255,40,40,0.3); }
+      100% { transform: translateX(0);     text-shadow: 0 0 0px rgba(255,60,60,0); }
+    }
+    .sw-shift { animation: swShift 0.45s ease; }
+
+    /* ── glitch overlay ── */
+    #glitch-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      display: none;
+    }
+    #glitch-overlay.active { display: block; }
+
+    /* chromatic aberration slices */
+    #glitch-overlay .g-slice {
+      position: absolute;
+      left: 0; right: 0;
+      background: inherit;
+      mix-blend-mode: screen;
+    }
+    #glitch-overlay .g-r { background: rgba(255,0,60,0.18); }
+    #glitch-overlay .g-b { background: rgba(0,210,255,0.18); }
+
+    @keyframes glitch-flicker {
+      0%   { opacity:1; transform: skewX(0deg) translateX(0); }
+      5%   { opacity:0.6; transform: skewX(-3deg) translateX(-8px); }
+      10%  { opacity:1; transform: skewX(2deg) translateX(6px); }
+      15%  { opacity:0.4; transform: skewX(0deg) translateX(0); }
+      20%  { opacity:1; }
+      30%  { opacity:0.2; transform: skewX(4deg) translateX(-12px); }
+      35%  { opacity:1; transform: skewX(-2deg) translateX(4px); }
+      40%  { opacity:0.7; }
+      50%  { opacity:1; transform: skewX(0) translateX(0); }
+      60%  { opacity:0.3; transform: skewX(-5deg) translateX(10px); }
+      65%  { opacity:1; transform: skewX(3deg) translateX(-6px); }
+      75%  { opacity:0.8; }
+      85%  { opacity:0.1; transform: skewX(-2deg) translateX(8px); }
+      90%  { opacity:1; transform: skewX(0) translateX(0); }
+      100% { opacity:1; }
+    }
+    @keyframes glitch-scanline {
+      0%   { top: -10%; }
+      100% { top: 110%; }
+    }
+    .g-scanline {
+      position: absolute;
+      left: 0; right: 0;
+      height: 3px;
+      background: rgba(0,210,255,0.25);
+      animation: glitch-scanline 0.4s linear infinite;
+    }
+    .g-noise {
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E");
+      opacity: 0;
+    }
+    /* ── fake system messages ── */
+    #sys-msg {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 9000;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .sys-line {
+      background: rgba(13,17,23,0.88);
+      border: 1px solid rgba(0,210,255,0.28);
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 11px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: rgba(0,210,255,0.85);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      box-shadow: 0 0 12px rgba(0,210,255,0.12), inset 0 0 8px rgba(0,0,0,0.3);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      white-space: nowrap;
+    }
+    .sys-line.show { opacity: 1; transform: translateY(0); }
+    .sys-line.fade { opacity: 0; transform: translateY(-4px); }
+    .sys-line.warn { color: rgba(255,160,0,0.9); border-color: rgba(255,160,0,0.3); box-shadow: 0 0 12px rgba(255,140,0,0.12); }
+    .sys-line.err  { color: rgba(255,70,70,0.9);  border-color: rgba(255,70,70,0.3);  box-shadow: 0 0 12px rgba(255,50,50,0.14); }
+    .sys-line.ok   { color: rgba(0,200,100,0.9);  border-color: rgba(0,200,100,0.3);  box-shadow: 0 0 12px rgba(0,200,100,0.12); }
+  </style>
+</head>
+<body>
+
+  <!-- top bar -->
+  <div id="topbar">
+    <div id="topbar-name">Glitch</div>
+    <div id="topbar-progress"><div id="topbar-fill"></div></div>
+    <div id="topbar-level">—</div>
+  </div>
+
+  <div class="particles" id="particles"></div>
+  <div id="app"></div>
+  <div id="glitch-overlay">
+    <div class="g-noise" id="g-noise"></div>
+    <div class="g-scanline"></div>
+    <div class="g-r" id="gr"></div>
+    <div class="g-b" id="gb"></div>
+  </div>
+
+  <script>
+    // particles
+    (function() {
+      const wrap = document.getElementById('particles');
+      for (let i = 0; i < 18; i++) {
+        const d = document.createElement('div');
+        d.className = 'p';
+        const s = Math.random() * 3 + 2;
+        d.style.cssText = `width:${s}px;height:${s}px;left:${Math.random()*100}%;top:${85+Math.random()*20}%;animation-duration:${8+Math.random()*9}s;animation-delay:${Math.random()*8}s;`;
+        wrap.appendChild(d);
+      }
+    })();
+
+    const levels = [
+      { type:'math', q:'What is 2 + 2?', ans:'4', hint:'' },
+      { type:'type', word:'start', ans:'start', hint:'' },
+      { type:'sequence', q:'What comes next?\n2  4  6  8  ?', ans:'10', hint:'' },
+      { type:'sequence-text', q:"What's missing?\nA  C  E  G  ?", ans:'I', hint:'' },
+      { type:'meta', q:'The answer is the current level number.', hint:'' },
+      { type:'math', q:'How many letters are in the word "seven"?', ans:'5', hint:'' },
+      { type:'unscramble', letters:'I T K H N', q:'Unscramble it.', ans:'think', hint:'' },
+      { type:'tricky', q:'The answer is not apple.', ans:'not apple', hint:'' },
+      { type:'hidden', q:'The answer is hidden on this page.', ans:'banana', hint:'' },
+      { type:'type', word:'DRAWKCAB', q:'Type this backwards:', ans:'backward', hint:'' },
+      { type:'math', q:'How many times does the letter E appear below?\nBANANA', ans:'0', hint:'' },
+      { type:'tricky', q:'What is half of 8?', ans:'3', hint:'Think visually' },
+      { type:'sequence-text', q:'What is the next letter?\nJ  F  M  A  M  J  ?', ans:'J', hint:'' },
+      { type:'tricky', q:"Don't type YES.", ans:'__any__', hint:'' },
+      { type:'recall', q:'What is the answer for level 2?', ans:'start', hint:'' },
+      { type:'patience', name:'The Button', hint:'' },
+      { type:'jumper', name:'Catch Me', hint:'' },
+      { type:'enter-only', name:'Just Answer', q:'What color is the sky?', ans:'blue', hint:'' },
+      { type:'hold', name:'Hold On', hint:'' },
+      { type:'hidden-btn', name:'Hidden', hint:'' },
+      { type:'fake-error', name:'Error', hint:'' },
+      { type:'shrink-word', name:'Less Is More', hint:'' },
+      { type:'dont-click', name:'Patience', hint:'' },
+      { type:'find-mistake', name:'Spot It', hint:'' },
+      { type:'congrats-card', name:'The End', hint:'' },
+      { type:'torch', name:'Lights Out', hint:'' },
+      { type:'bad-hint', name:'Trust Issues', hint:'' },
+      { type:'blue-btn', name:'Blue Button', hint:'' },
+      { type:'escape-box', name:'The Escape Key', hint:'' },
+      { type:'fake-wrong', q:'What is the capital of TN?', ans:'chennai', hint:'' },
+      { type:'blank', hint:'', name:'The Void' },
+      { type:'fake-restart', hint:'', name:'System Failure' },
+      { type:'recall', q:'What is the answer of level 11?', ans:'0', hint:'', inputType:'text', name:'Memory Test' },
+      { type:'fake-load', hint:'', name:'Skip Logic' },
+      { type:'screen-cleaner', hint:'', name:'Wipe It' },
+      { type:'not-banana', q:'The answer is not banana.', hint:'', name:'Not That' },
+      { type:'find-button', hint:'', name:'Again Button' },
+      { type:'never-mind', hint:'', name:'Never Mind' },
+      { type:'suspicious-dot', hint:'', name:'Important' },
+      { type:'reality-check', hint:'', name:'Final Test' }
+    ];
+
+    const TOTAL = levels.length;
+    let state = { level: 0, score: 0, revealed: false };
+    try { const s = localStorage.getItem('glitch'); if (s) { const p = JSON.parse(s); if (p.level >= 0) state = p; } } catch(e) {}
+    if (state.level >= levels.length) state = { level: 0, score: 0 };
+    function save() { try { localStorage.setItem('glitch', JSON.stringify(state)); } catch(e) {} }
+
+    function getVisibleTotal() {
+      return state.revealed ? TOTAL : 25;
+    }
+    function setTopbar(lvlNum) {
+      const fill = document.getElementById('topbar-fill');
+      const label = document.getElementById('topbar-level');
+      if (lvlNum === null) {
+        fill.style.width = '0%';
+        label.textContent = '—';
+      } else {
+        const tot = getVisibleTotal();
+        fill.style.width = Math.max(1, Math.round((lvlNum / tot) * 100)) + '%';
+        label.textContent = `LVL ${lvlNum} / ${tot}`;
+      }
+    }
+
+    const app = document.getElementById('app');
+    function render(html) {
+      app.innerHTML = `<div class="card">${html}</div>`;
+    }
+
+    function showLanding() {
+      setTopbar(null);
+      render(`
+        <div class="brand">Glitch</div>
+        <div class="brand-eyebrow">Challenge Your Mind</div>
+        <span class="brain-icon">🧠</span>
+        <div class="tagline">Word puzzles · Math · Trivia · Logic</div>
+        <div class="loading-bar-track">
+          <div class="loading-bar-fill" id="lbar"></div>
+        </div>
+        <div class="loading-label" id="ltext">Loading...</div>
+      `);
+
+      let pct = 0;
+      const bar = document.getElementById('lbar');
+      const lbl = document.getElementById('ltext');
+      const iv = setInterval(() => {
+        pct += Math.random() * 4 + 1.5;
+        if (pct >= 100) { pct = 100; clearInterval(iv); }
+        bar.style.width = pct + '%';
+        if      (pct < 40)  lbl.textContent = 'Loading...';
+        else if (pct < 75)  lbl.textContent = 'Unlocking vault...';
+        else if (pct < 100) lbl.textContent = 'Almost there...';
+        else { lbl.textContent = 'Ready'; setTimeout(() => showLevelCard(state.level), 400); }
+      }, 80);
+    }
+
+    function getChapter(lvlIdx) {
+      if (lvlIdx <= 14) return 1;
+      if (lvlIdx <= 29) return 2;
+      return 3;
+    }
+    function getLevelLabel(lvlIdx) {
+      const num = lvlIdx + 1;
+      const ch = getChapter(lvlIdx);
+      return (ch === 2 || ch === 3) ? `GLITCH ${num}` : `Level ${num}`;
+    }
+    function getChapterTag(lvlIdx) {
+      return ['', 'Chapter 1', 'Chapter 2', 'Chapter 3'][getChapter(lvlIdx)];
+    }
+
+    const panicMessages = [
+      'SIGNAL LOST',
+      'CONNECTION SEVERED',
+      'MEMORY CORRUPTION DETECTED',
+      'REALITY BUFFER OVERFLOW',
+      'SYSTEM BREACH',
+      'UNAUTHORIZED ACCESS',
+      'CORE DUMP IN PROGRESS',
+      'YOU ARE NOT SUPPOSED TO SEE THIS',
+      'ERROR 0x000000FF',
+      'WHO IS PLAYING?',
+    ];
+
+    function showLevelCard(lvlIdx) {
+      const oldDot = document.getElementById('suspiciousDot');
+      if (oldDot) oldDot.remove();
+      const num = lvlIdx + 1;
+      const lvl = levels[lvlIdx];
+      setTopbar(num);
+      const levelLabel = getLevelLabel(lvlIdx);
+      const chapterTag = getChapterTag(lvlIdx);
+      const nameLine = lvl && lvl.name
+        ? `<div style="font-size:18px;font-weight:700;color:#00d2ff;letter-spacing:2px;margin-top:10px;">${lvl.name}</div>`
+        : `<div class="level-sub">Get ready for your next challenge</div>`;
+
+      // 20% chance of panic flash after level 22
+      if (lvlIdx >= 22 && Math.random() < 0.20) {
+        const msg = panicMessages[Math.floor(Math.random() * panicMessages.length)];
+        app.innerHTML = `
+          <div style="
+            position:fixed;inset:0;z-index:8000;
+            background:#000;
+            display:flex;align-items:center;justify-content:center;
+          ">
+            <div style="
+              font-family:'Courier New',monospace;
+              font-size:clamp(16px,4vw,28px);
+              font-weight:900;
+              color:#ff2222;
+              letter-spacing:4px;
+              text-transform:uppercase;
+              text-align:center;
+              text-shadow:0 0 20px rgba(255,30,30,0.8),0 0 40px rgba(255,0,0,0.4);
+              animation:panicPulse 0.15s ease infinite alternate;
+              padding:20px;
+            ">${msg}</div>
+          </div>
+        `;
+        setTimeout(() => {
+          app.innerHTML = '';
+          render(`
+            <div class="level-chip">⬡ &nbsp;${chapterTag}</div>
+            <div class="level-num">${levelLabel}</div>
+            ${nameLine}
+          `);
+          setTimeout(() => showPuzzle(lvlIdx), 3000);
+        }, 300);
+        return;
+      }
+
+      if (lvlIdx === 33) {
+        // Level 34 — fake load messages inside the level card
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chapterTag}</div>
+          <div class="level-num">${levelLabel}</div>
+          <div id="flMsg" style="font-size:13px;color:rgba(255,255,255,0);letter-spacing:2px;margin-top:18px;transition:color 0.8s ease;min-height:20px;"></div>
+          <div id="flSub" style="font-size:11px;color:rgba(255,255,255,0);letter-spacing:2px;margin-top:10px;transition:color 1s ease;"></div>
+        `);
+        const setMsg = (text, op) => { const el=document.getElementById('flMsg'); if(el){el.style.color=`rgba(255,255,255,${op})`;el.textContent=text;} };
+        const setSub = (text, op) => { const el=document.getElementById('flSub'); if(el){el.style.color=`rgba(255,255,255,${op})`;el.textContent=text;} };
+        setTimeout(() => setMsg('Loading Level 34...', 0.45), 400);
+        setTimeout(() => setMsg('Still Loading...', 0.45), 3400);
+        setTimeout(() => setMsg('Almost There...', 0.45), 6400);
+        setTimeout(() => setSub('...or click anywhere.', 0.25), 9400);
+        let clicked = false;
+        const clickHandler = () => {
+          if (!clicked) {
+            clicked = true;
+            document.removeEventListener('click', clickHandler);
+            state.score += 10; state.level = lvlIdx + 1; save();
+            showComplete(lvlIdx);
+          }
+        };
+        setTimeout(() => document.addEventListener('click', clickHandler), 9400);
+        return;
+      }
+
+      render(`
+        <div class="level-chip">⬡ &nbsp;${chapterTag}</div>
+        <div class="level-num">${levelLabel}</div>
+        ${nameLine}
+      `);
+      setTimeout(() => showPuzzle(lvlIdx), 3000);
+    }
+
+    function showPuzzle(lvlIdx) {
+      const lvl = levels[lvlIdx];
+      const num = lvlIdx + 1;
+      const chipLabel = getLevelLabel(lvlIdx);
+      setTopbar(num);
+      let questionBlock, inputType;
+      if (lvl.type === 'math') {
+        const mathLines = lvl.q.split('\n');
+        questionBlock = mathLines.length > 1
+          ? `<div class="puzzle-eyebrow">${mathLines[0]}</div><div class="puzzle-word" style="font-size:36px;letter-spacing:6px;">${mathLines[1]}</div>`
+          : `<div class="puzzle-eyebrow">Math Challenge</div><div class="puzzle-word" style="letter-spacing:4px;font-size:34px;">${lvl.q}</div>`;
+        inputType = 'number';
+      } else if (lvl.type === 'meta') {
+        questionBlock = `<div class="puzzle-eyebrow">Puzzle</div><div class="puzzle-word" style="font-size:18px;letter-spacing:2px;line-height:1.5;color:rgba(255,255,255,0.8);font-family:inherit;">${lvl.q}</div>`;
+        inputType = 'number';
+        lvl.ans = String(num);
+      } else if (lvl.type === 'recall') {
+        questionBlock = `<div class="puzzle-eyebrow">Memory Check</div><div class="puzzle-word" style="font-size:20px;letter-spacing:2px;line-height:1.5;color:rgba(255,255,255,0.85);font-family:inherit;">${lvl.q}</div>`;
+        inputType = 'text';
+      } else if (lvl.type === 'tricky') {
+        questionBlock = `<div class="puzzle-eyebrow">Puzzle</div><div class="puzzle-word" style="font-size:20px;letter-spacing:2px;line-height:1.5;color:rgba(255,255,255,0.85);font-family:inherit;">${lvl.q}</div>`;
+        inputType = 'text';
+      } else if (lvl.type === 'clickbtn') {
+        questionBlock = `<div class="puzzle-eyebrow">Puzzle</div><div class="puzzle-word" style="font-size:20px;letter-spacing:2px;color:rgba(255,255,255,0.85);font-family:inherit;margin-bottom:8px;">${lvl.q}</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px;">
+          ${lvl.buttons.map(b => {
+            const isSmall = b === '1';
+            return `<button class="opt-btn clickbtn-opt" data-val="${b}" style="font-size:${isSmall?'9px':'17px'};padding:${isSmall?'4px 6px':'12px 20px'};min-width:${isSmall?'28px':'52px'};border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#fff;cursor:pointer;transition:background 0.2s;">${b}</button>`;
+          }).join('')}
+        </div>`;
+        inputType = null;
+      } else if (lvl.type === 'unscramble') {
+        questionBlock = `<div class="puzzle-eyebrow">${lvl.q}</div><div class="puzzle-word" style="font-size:32px;letter-spacing:12px;">${lvl.letters}</div>`;
+        inputType = 'text';
+      } else if (lvl.type === 'hidden') {
+        questionBlock = `<div class="puzzle-eyebrow">Puzzle</div><div class="puzzle-word" style="font-size:20px;letter-spacing:2px;color:rgba(255,255,255,0.85);font-family:inherit;">${lvl.q}</div>`;
+        inputType = 'text';
+      } else if (lvl.type === 'sequence-text') {
+        const lines2 = lvl.q.split('\n');
+        questionBlock = `<div class="puzzle-eyebrow">${lines2[0]}</div><div class="puzzle-word" style="font-size:30px;letter-spacing:6px;">${lines2[1]}</div>`;
+        inputType = 'text';
+      } else if (lvl.type === 'sequence') {
+        const lines = lvl.q.split('\n');
+        questionBlock = `<div class="puzzle-eyebrow">${lines[0]}</div><div class="puzzle-word" style="font-size:30px;letter-spacing:6px;">${lines[1]}</div>`;
+        inputType = 'number';
+      } else if (lvl.type === 'hold') {
+        const bananaElH = document.getElementById('hidden-banana');
+        if (bananaElH) bananaElH.style.display = 'none';
+
+        const REQUIRED = 7000;
+        let holdStart = null, fillTimer = null, success = false;
+
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          <div class="puzzle-eyebrow">Puzzle</div>
+          <div class="puzzle-word" style="font-size:22px;letter-spacing:2px;color:rgba(255,255,255,0.85);font-family:inherit;margin-bottom:28px;">Hold for 3 seconds.</div>
+          <button id="holdBtn" class="submit-btn" style="font-size:15px;letter-spacing:2px;user-select:none;">Hold Me</button>
+        `);
+
+        const btn = document.getElementById('holdBtn');
+
+        function startHold(e) {
+          e.preventDefault();
+          if (success) return;
+          holdStart = Date.now();
+          fillTimer = setInterval(() => {
+            const elapsed = Date.now() - holdStart;
+            if (elapsed >= REQUIRED && !success) {
+              success = true;
+              clearInterval(fillTimer);
+              btn.style.borderColor = '#00c864';
+              btn.style.color = '#00c864';
+              btn.textContent = '✓';
+              state.score += 10; state.level = lvlIdx + 1; save();
+              setTimeout(() => showComplete(lvlIdx), 500);
+            }
+          }, 50);
+        }
+
+        function endHold(e) {
+          e.preventDefault();
+          if (success) return;
+          clearInterval(fillTimer);
+          holdStart = null;
+        }
+
+        btn.addEventListener('mousedown', startHold);
+        btn.addEventListener('touchstart', startHold, { passive: false });
+        btn.addEventListener('mouseup', endHold);
+        btn.addEventListener('mouseleave', endHold);
+        btn.addEventListener('touchend', endHold);
+        btn.addEventListener('touchcancel', endHold);
+        return;
+      } else if (lvl.type === 'hidden-btn') {
+        const bananaElHB = document.getElementById('hidden-banana');
+        if (bananaElHB) bananaElHB.style.display = 'none';
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          <div class="puzzle-eyebrow">Puzzle</div>
+          <button id="hiddenQBtn" style="
+            background:none;border:none;padding:0;margin:0 0 28px;
+            font-size:22px;letter-spacing:2px;color:rgba(255,255,255,0.85);
+            font-family:inherit;cursor:pointer;line-height:1.5;
+            display:block;width:100%;text-align:center;
+          ">Find the hidden button.</button>
+          <div class="divider"></div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.15);letter-spacing:2px;margin-top:16px;">keep looking…</div>
+        `);
+        document.getElementById('hiddenQBtn').addEventListener('click', () => {
+          state.score += 10; state.level = lvlIdx + 1; save();
+          setTimeout(() => showComplete(lvlIdx), 300);
+        });
+        return;
+      } else if (lvl.type === 'shrink-word') {
+        const bananaElSW = document.getElementById('hidden-banana');
+        if (bananaElSW) bananaElSW.style.display = 'none';
+
+        const steps = [
+          { word: 'Wheat', ans: 'wheat' },
+          { word: 'Heat',  ans: 'heat'  },
+          { word: 'Eat',   ans: 'eat'   },
+        ];
+        let step = 0;
+
+        function renderStep() {
+          const { word } = steps[step];
+          render(`
+            <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+            <div class="puzzle-eyebrow">Type the word below</div>
+            <div class="puzzle-word" id="sw-word" style="font-size:36px;letter-spacing:8px;">${word}</div>
+            <div class="divider"></div>
+            <input class="ans-input" id="ans" type="text" placeholder="your answer…" autocomplete="off" autocorrect="off" spellcheck="false" />
+            <button class="submit-btn" id="subBtn">Submit</button>
+          `);
+          const inp = document.getElementById('ans');
+          inp.focus();
+
+          function attempt() {
+            const val = inp.value.trim().toLowerCase();
+            const correct = steps[step].ans;
+            if (val === correct) {
+              if (step >= steps.length - 1) {
+                // final step — complete level
+                inp.classList.add('correct');
+                state.score += 10; state.level = lvlIdx + 1; save();
+                setTimeout(() => showComplete(lvlIdx), 600);
+              } else {
+                // shake + red glow fires immediately, word swaps at animation midpoint
+                step++;
+                const wordEl = document.getElementById('sw-word');
+                if (wordEl) {
+                  wordEl.classList.remove('sw-shift');
+                  void wordEl.offsetWidth;
+                  wordEl.classList.add('sw-shift');
+                  // swap text halfway through the shake so it feels punchy
+                  setTimeout(() => { wordEl.textContent = steps[step].word; }, 220);
+                  wordEl.addEventListener('animationend', () => wordEl.classList.remove('sw-shift'), { once: true });
+                }
+                inp.value = '';
+                inp.classList.remove('wrong', 'shake');
+                inp.focus();
+              }
+            } else {
+              // genuinely wrong answer
+              inp.classList.remove('wrong');
+              void inp.offsetWidth;
+              inp.classList.add('wrong', 'shake');
+              setTimeout(() => { inp.classList.remove('wrong','shake'); inp.value = ''; inp.focus(); }, 700);
+            }
+          }
+
+          inp.addEventListener('keydown', e => { if (e.key === 'Enter') attempt(); });
+          document.getElementById('subBtn').addEventListener('click', attempt);
+        }
+
+        renderStep();
+        return;
+      } else if (lvl.type === 'torch') {
+        const bananaElT = document.getElementById('hidden-banana');
+        if (bananaElT) bananaElT.style.display = 'none';
+
+        // Render the card with the hidden button in a non-obvious spot
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          <div style="height:60px;"></div>
+          <div style="height:60px;"></div>
+          <div style="height:60px;position:relative;">
+            <button id="torchBtn" style="
+              position:absolute;
+              top:50%; left:72%;
+              transform:translateY(-50%);
+              background:rgba(0,210,255,0.08);
+              border:1px solid rgba(0,210,255,0.25);
+              border-radius:6px;
+              padding:5px 10px;
+              font-size:9px;
+              color:#00d2ff;
+              letter-spacing:1px;
+              cursor:pointer;
+              white-space:nowrap;
+            ">found</button>
+          </div>
+          <div style="height:60px;"></div>
+        `);
+
+        document.getElementById('torchBtn').addEventListener('click', () => {
+          // remove the dark overlay then complete
+          const overlay = document.getElementById('torch-overlay');
+          if (overlay) overlay.remove();
+          state.score += 10; state.level = lvlIdx + 1; save();
+          setTimeout(() => showComplete(lvlIdx), 300);
+        });
+
+        // Build the dark overlay that sits over everything
+        const existing = document.getElementById('torch-overlay');
+        if (existing) existing.remove();
+
+        const darkEl = document.createElement('div');
+        darkEl.id = 'torch-overlay';
+        darkEl.style.cssText = `
+          position:fixed;inset:0;z-index:5000;
+          background:radial-gradient(circle 0px at -999px -999px, transparent 0%, #0d1117 1px);
+          pointer-events:none;
+          transition:none;
+        `;
+        document.body.appendChild(darkEl);
+
+        // Small instruction that fades out
+        const hint = document.createElement('div');
+        hint.style.cssText = `
+          position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
+          font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:3px;
+          z-index:5001;pointer-events:none;text-transform:uppercase;
+          transition:opacity 1s;
+        `;
+        hint.textContent = 'Move to explore';
+        document.body.appendChild(hint);
+        setTimeout(() => { hint.style.opacity = '0'; }, 2500);
+        setTimeout(() => { hint.remove(); }, 3600);
+
+        const RADIUS = 45;
+
+        function moveTorch(x, y) {
+          darkEl.style.background = `radial-gradient(circle ${RADIUS}px at ${x}px ${y}px, transparent 40%, rgba(13,17,23,0.92) 80%, #0d1117 100%)`;
+        }
+
+        // start fully dark until first move
+        moveTorch(-999, -999);
+
+        function onMouseMove(e) { moveTorch(e.clientX, e.clientY); }
+        function onTouchMove(e) {
+          e.preventDefault();
+          const t = e.touches[0];
+          moveTorch(t.clientX, t.clientY);
+        }
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('touchmove', onTouchMove, { passive: false });
+
+        // clean up listeners when level ends (next render will wipe the overlay)
+        const origRender = render;
+        const cleanup = () => {
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('touchmove', onTouchMove);
+          const o = document.getElementById('torch-overlay');
+          if (o) o.remove();
+        };
+        document.getElementById('torchBtn').addEventListener('click', cleanup);
+
+        return;
+      } else if (lvl.type === 'bad-hint') {
+        const bananaElBH = document.getElementById('hidden-banana');
+        if (bananaElBH) bananaElBH.style.display = 'none';
+
+        // The hard question, fake hint word, and real answer
+        const hardQ   = 'What is the 36th element in the periodic table?';
+        const realAns = 'krypton';
+        const fakeHint = 'Zn';
+        const easyQ   = 'What is 1 + 1?';
+        const easyAns = '2';
+
+        let phase = 'hard'; // 'hard' | 'hint-used' | 'easy'
+
+        function renderBadHint() {
+          const isEasy = phase === 'easy';
+          const q = isEasy ? easyQ : hardQ;
+          const hintSection = isEasy ? '' : `
+            <button id="bhHint" style="
+              display:block;width:100%;margin-top:12px;
+              padding:10px 22px;border-radius:20px;
+              background:#ffe600;border:none;
+              font-size:12px;font-weight:700;letter-spacing:2px;
+              color:#1a1a00;cursor:pointer;
+              transition:background 0.3s,color 0.3s;
+            ">💡 HINT</button>
+          `;
+          const hint2 = phase === 'hint-used' ? `
+            <button id="bhHint2" style="
+              display:block;width:100%;margin-top:10px;
+              padding:10px 22px;border-radius:20px;
+              background:#ffe600;border:none;
+              font-size:12px;font-weight:700;letter-spacing:2px;
+              color:#1a1a00;cursor:pointer;
+              transition:background 0.3s,color 0.3s;
+            ">💡 HINT 2</button>
+          ` : '';
+
+          render(`
+            <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+            <div class="puzzle-eyebrow" style="margin-bottom:16px;">Puzzle</div>
+            <div class="puzzle-word" style="font-size:18px;letter-spacing:1px;color:rgba(255,255,255,0.85);font-family:inherit;margin-bottom:22px;line-height:1.6;">${q}</div>
+            <div class="divider"></div>
+            <input class="ans-input" id="ans" type="text" placeholder="your answer…" autocomplete="off" autocorrect="off" spellcheck="false" />
+            <button class="submit-btn" id="subBtn">Submit</button>
+            ${hintSection}${hint2}
+          `);
+
+          const inp = document.getElementById('ans');
+          inp.focus();
+
+          // Hint 1 button
+          const hintBtn = document.getElementById('bhHint');
+          if (hintBtn) {
+            hintBtn.addEventListener('click', () => {
+              hintBtn.textContent = `💡 ${fakeHint}`;
+              hintBtn.style.background = '#ffe600';
+            });
+          }
+
+          // Hint 2 button
+          const hint2Btn = document.getElementById('bhHint2');
+          if (hint2Btn) {
+            hint2Btn.addEventListener('click', () => {
+              hint2Btn.textContent = 'why are you trusting hints?';
+              hint2Btn.style.background = '#ff6b35';
+              hint2Btn.style.color = '#fff';
+              hint2Btn.disabled = true;
+              setTimeout(() => {
+                phase = 'easy';
+                renderBadHint();
+              }, 1400);
+            });
+          }
+
+          function attempt() {
+            const val = inp.value.trim().toLowerCase();
+
+            if (phase === 'easy') {
+              // easy question
+              if (val === easyAns) {
+                inp.classList.add('correct');
+                state.score += 10; state.level = lvlIdx + 1; save();
+                setTimeout(() => showComplete(lvlIdx), 600);
+              } else {
+                inp.classList.remove('wrong'); void inp.offsetWidth;
+                inp.classList.add('wrong', 'shake');
+                setTimeout(() => { inp.classList.remove('wrong','shake'); inp.value = ''; inp.focus(); }, 700);
+              }
+              return;
+            }
+
+            // hard phase: check if they typed the fake hint word
+            if (val === fakeHint.toLowerCase()) {
+              // trap sprung — smoothly show second hint, no shake
+              setTimeout(() => {
+                phase = 'hint-used';
+                renderBadHint();
+              }, 300);
+              return;
+            }
+
+            // genuinely wrong
+            if (val === realAns) {
+              // actually correct — but let's never make it easy 😈
+              // (real answer is nitrogen — accept it)
+              inp.classList.add('correct');
+              state.score += 10; state.level = lvlIdx + 1; save();
+              setTimeout(() => showComplete(lvlIdx), 600);
+            } else {
+              inp.classList.remove('wrong'); void inp.offsetWidth;
+              inp.classList.add('wrong', 'shake');
+              setTimeout(() => { inp.classList.remove('wrong','shake'); inp.value = ''; inp.focus(); }, 700);
+            }
+          }
+
+          inp.addEventListener('keydown', e => { if (e.key === 'Enter') attempt(); });
+          document.getElementById('subBtn').addEventListener('click', attempt);
+        }
+
+        renderBadHint();
+        return;
+      } else if (lvl.type === 'find-mistake') {
+        const bananaElFM = document.getElementById('hidden-banana');
+        if (bananaElFM) bananaElFM.style.display = 'none';
+
+        const fmStatements = [
+          { id:'fm1', text:'The Eiffel Tower is located in Paris, France.', correct: false },
+          { id:'fm2', text:'Water boils at 100°C at sea level.', correct: false },
+          { id:'fm3', text:'The sun rises in the East.', correct: false },
+          { id:'fm4', text:'Humans have 206 bones in their body.', correct: false },
+        ];
+        const btnStyle = `background:rgba(255,255,255,0.04);border:1px solid rgba(0,210,255,0.18);border-radius:12px;padding:14px 18px;width:100%;font-size:14px;color:rgba(255,255,255,0.75);font-family:inherit;line-height:1.6;cursor:pointer;letter-spacing:0.5px;text-align:center;margin-bottom:8px;transition:border-color 0.2s,color 0.2s;display:block;`;
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          <div class="puzzle-eyebrow" style="margin-bottom:16px;">Find the <span id="mistakeWord" style="cursor:pointer;color:rgba(255,255,255,0.28);">mistake</span>.</div>
+          ${fmStatements.map(s => `<button id="${s.id}" style="${btnStyle}">${s.text}</button>`).join('')}
+        `);
+
+        // all statement buttons = wrong
+        fmStatements.forEach(s => {
+          document.getElementById(s.id).addEventListener('click', () => {
+            const btn = document.getElementById(s.id);
+            btn.style.borderColor = '#ff4444';
+            btn.style.color = '#ff6666';
+            setTimeout(() => {
+              btn.style.borderColor = 'rgba(0,210,255,0.18)';
+              btn.style.color = 'rgba(255,255,255,0.75)';
+            }, 700);
+          });
+        });
+
+        // the word "mistake" in the eyebrow is the real answer
+        document.getElementById('mistakeWord').addEventListener('click', () => {
+          state.score += 10; state.level = lvlIdx + 1; save();
+          showComplete(lvlIdx);
+        });
+
+        return;
+      } else if (lvl.type === 'dont-click') {
+        const bananaElDC = document.getElementById('hidden-banana');
+        if (bananaElDC) bananaElDC.style.display = 'none';
+
+        let t5, t10;
+
+        function startDontClick() {
+          clearTimeout(t5); clearTimeout(t10);
+
+          render(`
+            <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+            <div class="puzzle-eyebrow">Puzzle</div>
+            <div class="puzzle-word" id="dc-msg" style="font-size:20px;letter-spacing:2px;color:rgba(255,255,255,0.85);font-family:inherit;margin-bottom:32px;">Wait. Don't click the button.</div>
+            <button id="dontBtn" class="submit-btn" style="font-size:14px;letter-spacing:2px;">Click Me</button>
+          `);
+
+          document.getElementById('dontBtn').addEventListener('click', () => {
+            clearTimeout(t5); clearTimeout(t10);
+            alert('I told you to wait.');
+            startDontClick();
+          });
+
+          t5 = setTimeout(() => {
+            const msg = document.getElementById('dc-msg');
+            if (msg) msg.textContent = 'Still waiting?';
+          }, 3000);
+
+          t10 = setTimeout(() => {
+            state.score += 10; state.level = lvlIdx + 1; save();
+            showComplete(lvlIdx);
+          }, 6000);
+        }
+
+        startDontClick();
+        return;
+      } else if (lvl.type === 'fake-error') {
+        const bananaElFE = document.getElementById('hidden-banana');
+        if (bananaElFE) bananaElFE.style.display = 'none';
+
+        // Phase 1: error screen
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          <span style="font-size:48px;display:block;margin-bottom:16px;">⚠️</span>
+          <div style="font-size:20px;font-weight:800;color:#ff4444;letter-spacing:2px;margin-bottom:8px;">ERROR</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.45);letter-spacing:1px;">Something went wrong.</div>
+          <div id="error-sub" style="font-size:11px;color:rgba(255,255,255,0.18);letter-spacing:2px;margin-top:28px;min-height:18px;"></div>
+        `);
+
+        // Phase 2: after 5s show the "tap anywhere" hint then listen for any click
+        setTimeout(() => {
+          const sub = document.getElementById('error-sub');
+          if (sub) sub.textContent = 'Tap anywhere to continue.';
+
+          document.addEventListener('click', function onTap() {
+            document.removeEventListener('click', onTap);
+            state.score += 10; state.level = lvlIdx + 1; save();
+            showComplete(lvlIdx);
+          });
+        }, 5000);
+
+        return;
+      } else if (lvl.type === 'enter-only') {
+        const bananaElE = document.getElementById('hidden-banana');
+        if (bananaElE) bananaElE.style.display = 'none';
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          <div class="puzzle-eyebrow">Puzzle</div>
+          <div class="puzzle-word" style="font-size:24px;letter-spacing:3px;color:rgba(255,255,255,0.85);font-family:inherit;margin-bottom:26px;">${lvl.q}</div>
+          <div class="divider"></div>
+          <input class="ans-input" id="ans" type="text" placeholder="your answer…" autocomplete="off" autocorrect="off" spellcheck="false" />
+        `);
+        const inp = document.getElementById('ans');
+        inp.focus();
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') check(lvlIdx); });
+        return;
+      } else if (lvl.type === 'jumper') {
+        const bananaElJ = document.getElementById('hidden-banana');
+        if (bananaElJ) bananaElJ.style.display = 'none';
+
+        // Render the arena — button will be absolutely positioned inside it
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          <div class="puzzle-eyebrow">Puzzle</div>
+          <div class="puzzle-word" style="font-size:22px;letter-spacing:2px;color:rgba(255,255,255,0.85);font-family:inherit;margin-bottom:8px;">Click the button.</div>
+          <div id="jumper-arena" style="position:relative;width:100%;height:220px;margin-top:8px;"></div>
+        `);
+
+        let jumperClicks = 0;
+        const arena = document.getElementById('jumper-arena');
+
+        // Pre-defined positions that feel random but never overlap the current spot
+        const positions = [
+          { top: 10,  left: 10  },
+          { top: 10,  left: 60  },
+          { top: 55,  left: 5   },
+          { top: 55,  left: 55  },
+          { top: 10,  left: 30  },
+          { top: 55,  left: 30  },
+          { top: 30,  left: 5   },
+          { top: 30,  left: 55  },
+        ];
+        let lastPosIdx = -1;
+
+        function placeBtn() {
+          // pick a position that is not the last one
+          let idx;
+          do { idx = Math.floor(Math.random() * positions.length); } while (idx === lastPosIdx);
+          lastPosIdx = idx;
+          const pos = positions[idx];
+
+          // remove old button if exists
+          const old = document.getElementById('jumperBtn');
+          if (old) old.remove();
+
+          const btn = document.createElement('button');
+          btn.id = 'jumperBtn';
+          btn.textContent = 'Click Me';
+          btn.className = 'submit-btn';
+          btn.style.cssText = `
+            position:absolute;
+            top:${pos.top}%;left:${pos.left}%;
+            width:38%;
+            font-size:13px;
+            letter-spacing:2px;
+            transition:none;
+          `;
+          arena.appendChild(btn);
+
+          btn.addEventListener('click', () => {
+            jumperClicks++;
+            if (jumperClicks >= 5) {
+              btn.disabled = true;
+              btn.style.borderColor = '#00c864';
+              btn.style.color = '#00c864';
+              state.score += 10; state.level = lvlIdx + 1; save();
+              setTimeout(() => showComplete(lvlIdx), 500);
+            } else {
+              placeBtn();
+            }
+          });
+        }
+
+        placeBtn();
+        return;
+      } else if (lvl.type === 'fake-restart') {
+        const bananaElFR = document.getElementById('hidden-banana');
+        if (bananaElFR) bananaElFR.style.display = 'none';
+        render(`
+          <div style="font-size:42px;margin-bottom:18px;">⚠️</div>
+          <div style="font-size:20px;font-weight:700;color:#ff6060;letter-spacing:2px;margin-bottom:10px;">Progress Corrupted</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.3);margin-bottom:28px;line-height:1.8;">
+            An error occurred with your save data.<br>All progress may be lost.
+          </div>
+          <button class="submit-btn" id="restartFakeBtn" style="border-color:rgba(255,80,80,0.4);color:#ff6060;letter-spacing:2px;">↺ &nbsp;Restart Progress</button>
+        `);
+        document.getElementById('restartFakeBtn').addEventListener('click', () => {
+
+          // Step 1 — fake loading bar
+          render(`
+            <div style="font-size:13px;color:rgba(0,210,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;">Restoring data...</div>
+            <div style="height:3px;background:rgba(255,255,255,0.07);border-radius:10px;overflow:hidden;width:100%;">
+              <div id="fakeLoadBar" style="height:100%;width:0%;background:#00d2ff;border-radius:10px;transition:width 0.08s linear;"></div>
+            </div>
+          `);
+          let pct = 0;
+          const bar = document.getElementById('fakeLoadBar');
+          const loadIv = setInterval(() => {
+            pct += Math.random() * 5 + 2;
+            if (pct >= 100) { pct = 100; clearInterval(loadIv); }
+            if (bar) bar.style.width = pct + '%';
+          }, 60);
+
+          setTimeout(() => {
+            // Step 2 — show Level 11 card (like showLevelCard)
+            setTopbar(11);
+            render(`
+              <div class="level-chip">⬡ &nbsp;Level 11</div>
+              <div class="level-num" style="font-size:clamp(48px,12vw,88px);font-weight:900;letter-spacing:-2px;margin:8px 0;">11</div>
+              <div class="level-sub">Get ready for your next challenge</div>
+            `);
+
+            setTimeout(() => {
+              // Step 3 — show Level 11 question (interactive but disabled)
+              render(`
+                <div class="level-chip">⬡ &nbsp;Level 11</div>
+                <div class="puzzle-eyebrow" style="margin-bottom:12px;">Math Challenge</div>
+                <div class="puzzle-word" style="font-size:18px;letter-spacing:2px;color:rgba(255,255,255,0.8);font-family:inherit;">How many times does the letter E appear below?</div>
+                <div class="puzzle-word" style="font-size:36px;letter-spacing:6px;margin-top:8px;">BANANA</div>
+                <div class="divider"></div>
+                <input class="ans-input" id="fakeAns" type="number" placeholder="your answer…" autocomplete="off" disabled style="opacity:0.5;cursor:not-allowed;"/>
+                <button class="submit-btn" style="opacity:0.5;cursor:not-allowed;" disabled>Submit</button>
+
+                <div id="justKiddingPopup" style="
+                  display:none;position:fixed;inset:0;z-index:999;
+                  background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);
+                  align-items:center;justify-content:center;
+                ">
+                  <div style="
+                    background:rgba(13,17,23,0.97);
+                    border:1px solid rgba(0,210,255,0.25);
+                    border-radius:20px;padding:40px 44px;
+                    max-width:360px;width:90%;text-align:center;
+                    animation:fadeUp 0.35s ease both;
+                  ">
+                    <div style="font-size:42px;margin-bottom:14px;">😄</div>
+                    <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:10px;">Just kidding.</div>
+                    <div style="font-size:13px;color:rgba(255,255,255,0.35);margin-bottom:26px;line-height:1.8;">
+                      Your progress is perfectly fine.<br>Relax. 😌
+                    </div>
+                    <button class="submit-btn" id="jkContinueBtn" style="letter-spacing:2px;">Continue →</button>
+                  </div>
+                </div>
+              `);
+
+              // Step 4 — after 5s, show popup
+              setTimeout(() => {
+                const popup = document.getElementById('justKiddingPopup');
+                if (popup) popup.style.display = 'flex';
+                document.getElementById('jkContinueBtn').addEventListener('click', () => {
+                  state.score += 10; state.level = lvlIdx + 1; save();
+                  showComplete(lvlIdx);
+                });
+              }, 5000);
+
+            }, 3000); // level 11 card shows for 3s
+
+          }, 1800); // loading bar duration
+        });
+        return;
+
+      } else if (lvl.type === 'fake-load') {
+        const bananaElFL = document.getElementById('hidden-banana');
+        if (bananaElFL) bananaElFL.style.display = 'none';
+
+        // Render the level card with a message area below
+        render(`
+          <div class="level-chip" id="flChip">⬡ &nbsp;${getLevelLabel(lvlIdx)}</div>
+          <div class="level-num">${num}</div>
+          <div id="flMsg" style="
+            font-size:13px;color:rgba(255,255,255,0);
+            letter-spacing:2px;margin-top:18px;
+            transition:color 0.8s ease;
+            min-height:20px;
+          "></div>
+          <div id="flSub" style="
+            font-size:11px;color:rgba(255,255,255,0);
+            letter-spacing:2px;margin-top:10px;
+            transition:color 1s ease;
+          "></div>
+        `);
+
+        function setMsg(text, opacity) {
+          const el = document.getElementById('flMsg');
+          if (el) { el.style.color = `rgba(255,255,255,${opacity})`; el.textContent = text; }
+        }
+        function setSub(text, opacity) {
+          const el = document.getElementById('flSub');
+          if (el) { el.style.color = `rgba(255,255,255,${opacity})`; el.textContent = text; }
+        }
+
+        setTimeout(() => setMsg('Loading Level 34...', 0.45), 300);
+        setTimeout(() => setMsg('Still Loading...', 0.45), 3300);
+        setTimeout(() => setMsg('Almost There...', 0.45), 6300);
+        setTimeout(() => setSub('...or click anywhere.', 0.22), 9300);
+
+        setTimeout(() => {
+          document.addEventListener('click', function handler() {
+            document.removeEventListener('click', handler);
+            state.score += 10; state.level = lvlIdx + 1; save();
+            showComplete(lvlIdx);
+          });
+        }, 9300);
+        return;
+
+      } else if (lvl.type === 'screen-cleaner') {
+        const bananaElSC = document.getElementById('hidden-banana');
+        if (bananaElSC) bananaElSC.style.display = 'none';
+
+        render(`
+          <div class="level-chip">⬡ &nbsp;${getLevelLabel(lvlIdx)}</div>
+          <div class="puzzle-eyebrow" style="margin-bottom:16px;">The Screen Cleaner</div>
+          <div style="font-size:15px;color:rgba(255,255,255,0.55);margin-bottom:28px;line-height:1.8;">
+            There's a stain on your screen.
+          </div>
+          <div id="stainWrap" style="position:relative;width:100%;height:160px;display:flex;align-items:center;justify-content:center;">
+            <div id="stain" style="
+              width:120px;height:88px;
+              background:radial-gradient(ellipse, rgba(180,140,80,0.6) 0%, rgba(140,100,45,0.35) 45%, rgba(100,70,20,0.12) 75%, transparent 100%);
+              border-radius:62% 48% 55% 42% / 52% 58% 44% 56%;
+              cursor:crosshair;
+              filter:blur(3px);
+              transition:opacity 0.4s ease;
+              user-select:none;
+            "></div>
+          </div>
+          <div id="scMsg" style="font-size:12px;color:rgba(255,255,255,0);letter-spacing:2px;margin-top:8px;transition:color 0.6s ease;">
+            rub it off...
+          </div>
+        `);
+
+        const stain = document.getElementById('stain');
+        const scMsg = document.getElementById('scMsg');
+        let rubs = 0;
+        const totalRubs = 22;
+
+        // Show hint after 2s
+        setTimeout(() => {
+          if (scMsg) scMsg.style.color = 'rgba(255,255,255,0.22)';
+        }, 2000);
+
+        // Track mouse/touch move over stain
+        function rub() {
+          rubs++;
+          const progress = rubs / totalRubs;
+          const opacity = Math.max(0, 1 - progress);
+          const blur = Math.max(0, 2 - progress * 2);
+          stain.style.opacity = opacity;
+          stain.style.filter = `blur(${blur}px)`;
+          if (rubs >= totalRubs) {
+            stain.style.opacity = '0';
+            setTimeout(() => {
+              state.score += 10; state.level = lvlIdx + 1; save();
+              showComplete(lvlIdx);
+            }, 500);
+          }
+        }
+
+        let isRubbing = false;
+        stain.addEventListener('mouseenter', () => { isRubbing = true; });
+        stain.addEventListener('mouseleave', () => { isRubbing = false; });
+        stain.addEventListener('mousemove', () => { if (isRubbing) rub(); });
+        stain.addEventListener('touchmove', (e) => { e.preventDefault(); rub(); }, { passive: false });
+        stain.addEventListener('click', rub);
+        return;
+
+      } else if (lvl.type === 'find-button') {
+        const bananaElFB = document.getElementById('hidden-banana');
+        if (bananaElFB) bananaElFB.style.display = 'none';
+
+        render(`
+          <div class="level-chip">⬡ &nbsp;${getLevelLabel(lvlIdx)}</div>
+          <div class="puzzle-eyebrow" style="margin-bottom:10px;">Find the button.</div>
+          <div id="fbMsg" style="font-size:12px;color:rgba(255,255,255,0);letter-spacing:2px;margin-top:18px;transition:color 0.8s ease;min-height:16px;"></div>
+        `);
+
+        // After 5s show hint and make background clickable
+        setTimeout(() => {
+          const msg = document.getElementById('fbMsg');
+          if (msg) { msg.style.color = 'rgba(255,255,255,0.3)'; msg.textContent = "Maybe you're standing on it."; }
+
+          const bgHandler = (e) => {
+            // only fire if click is NOT inside the card
+            if (!e.target.closest('.card')) {
+              document.removeEventListener('click', bgHandler);
+              state.score += 10; state.level = lvlIdx + 1; save();
+              showComplete(lvlIdx);
+            }
+          };
+          document.addEventListener('click', bgHandler);
+        }, 5000);
+        return;
+
+      } else if (lvl.type === 'never-mind') {
+        const bananaElNM = document.getElementById('hidden-banana');
+        if (bananaElNM) bananaElNM.style.display = 'none';
+        render(`
+          <div class="level-chip">⬡ &nbsp;${getLevelLabel(lvlIdx)}</div>
+          <div class="puzzle-eyebrow" style="margin-bottom:10px;">Solve</div>
+          <div class="puzzle-word" style="font-size:36px;letter-spacing:4px;">15 × 18</div>
+          <div class="divider"></div>
+          <div id="nmMsg" style="font-size:13px;color:rgba(255,255,255,0);letter-spacing:2px;margin-bottom:0;transition:color 0.8s ease;min-height:16px;"></div>
+          <div id="nmBtnWrap" style="margin-top:0;max-height:0;overflow:hidden;transition:max-height 0.6s ease,margin-top 0.6s ease;"></div>
+        `);
+        setTimeout(() => {
+          const msg = document.getElementById('nmMsg');
+          if (msg) { msg.style.color = 'rgba(255,255,255,0.4)'; msg.textContent = 'Actually never mind.'; }
+          setTimeout(() => {
+            const wrap = document.getElementById('nmBtnWrap');
+            if (wrap) {
+              wrap.style.maxHeight = '60px';
+              wrap.style.marginTop = '18px';
+              wrap.innerHTML = '<button class="submit-btn" id="nmSkip" style="letter-spacing:4px;">SKIP</button>';
+              document.getElementById('nmSkip').addEventListener('click', () => {
+                state.score += 10; state.level = lvlIdx + 1; save();
+                showComplete(lvlIdx);
+              });
+            }
+          }, 800);
+        }, 3000);
+        return;
+
+      } else if (lvl.type === 'suspicious-dot') {
+        const bananaElSD = document.getElementById('hidden-banana');
+        if (bananaElSD) bananaElSD.style.display = 'none';
+        render(`
+          <div class="level-chip">⬡ &nbsp;${getLevelLabel(lvlIdx)}</div>
+          <div class="puzzle-eyebrow" style="margin-bottom:10px;">Puzzle</div>
+          <div style="font-size:15px;color:rgba(255,255,255,0.55);line-height:1.8;">Something here is important.</div>
+        `);
+        // Tiny dot near bottom-right corner of page
+        const dot = document.createElement('span');
+        dot.id = 'suspiciousDot';
+        dot.textContent = '•';
+        dot.style.cssText = `
+          position:fixed;bottom:22px;right:28px;
+          font-size:16px;color:rgba(255,255,255,0.55);
+          cursor:pointer;z-index:999;
+          user-select:none;
+        `;
+        document.body.appendChild(dot);
+        dot.addEventListener('click', () => {
+          dot.remove();
+          state.score += 10; state.level = lvlIdx + 1; save();
+          showComplete(lvlIdx);
+        });
+        return;
+
+      } else if (lvl.type === 'reality-check') {
+        const bananaElRC = document.getElementById('hidden-banana');
+        if (bananaElRC) bananaElRC.style.display = 'none';
+        render(`
+          <div class="level-chip">⬡ &nbsp;${getLevelLabel(lvlIdx)}</div>
+          <div class="puzzle-eyebrow" style="margin-bottom:10px;">Reality Check</div>
+          <div style="font-size:16px;color:rgba(255,255,255,0.75);margin-bottom:24px;line-height:1.8;">How many questions have you solved so far?</div>
+          <div class="divider"></div>
+          <input class="ans-input" id="ans" type="number" placeholder="your answer…" autocomplete="off"/>
+          <button class="submit-btn" id="subBtn">Submit</button>
+        `);
+        const inp = document.getElementById('ans');
+        inp.focus();
+        let attempts = 0;
+        function doCheck() {
+          const val = inp.value.trim();
+          if (!val) return;
+          attempts++;
+          if (val === '40') {
+            // wrong — this level hasn't been solved yet
+            inp.classList.remove('wrong');
+            void inp.offsetWidth;
+            inp.classList.add('wrong', 'shake');
+            setTimeout(() => { inp.classList.remove('wrong','shake'); inp.value = ''; inp.focus(); }, 700);
+          } else if (val === '39') {
+            inp.classList.add('correct');
+            state.score += 10; state.level = lvlIdx + 1; save();
+            setTimeout(() => showComplete(lvlIdx), 600);
+          } else {
+            inp.classList.remove('wrong');
+            void inp.offsetWidth;
+            inp.classList.add('wrong', 'shake');
+            setTimeout(() => { inp.classList.remove('wrong','shake'); inp.value = ''; inp.focus(); }, 700);
+          }
+        }
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') doCheck(); });
+        document.getElementById('subBtn').addEventListener('click', doCheck);
+        return;
+
+      } else if (lvl.type === 'not-banana') {
+        const bananaElNB = document.getElementById('hidden-banana');
+        if (bananaElNB) bananaElNB.style.display = 'none';
+        render(`
+          <div class="level-chip">⬡ &nbsp;${getLevelLabel(lvlIdx)}</div>
+          <div class="puzzle-eyebrow" style="margin-bottom:12px;">Puzzle</div>
+          <div class="puzzle-word" style="font-size:20px;letter-spacing:2px;color:rgba(255,255,255,0.85);font-family:inherit;margin-bottom:24px;">${lvl.q}</div>
+          <div class="divider"></div>
+          <input class="ans-input" id="ans" type="text" placeholder="your answer…" autocomplete="off" spellcheck="false"/>
+          <button class="submit-btn" id="subBtn">Submit</button>
+        `);
+        const inp = document.getElementById('ans');
+        inp.focus();
+        function doCheck() {
+          const val = inp.value.trim().toLowerCase();
+          if (!val) return;
+          if (val === 'banana') {
+            inp.classList.remove('wrong');
+            void inp.offsetWidth;
+            inp.classList.add('wrong', 'shake');
+            setTimeout(() => { inp.classList.remove('wrong','shake'); inp.value = ''; inp.focus(); }, 700);
+          } else {
+            inp.classList.add('correct');
+            state.score += 10; state.level = lvlIdx + 1; save();
+            setTimeout(() => showComplete(lvlIdx), 600);
+          }
+        }
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') doCheck(); });
+        document.getElementById('subBtn').addEventListener('click', doCheck);
+        return;
+
+      } else if (lvl.type === 'blank') {
+        const bananaElBL = document.getElementById('hidden-banana');
+        if (bananaElBL) bananaElBL.style.display = 'none';
+        // Completely blank screen — just listen for Enter
+        app.innerHTML = '';
+        document.body.style.background = '#000';
+        const blankHandler = (e) => {
+          if (e.key === 'Enter') {
+            document.removeEventListener('keydown', blankHandler);
+            document.body.style.background = '';
+            state.score += 10; state.level = lvlIdx + 1; save();
+            showComplete(lvlIdx);
+          }
+        };
+        document.addEventListener('keydown', blankHandler);
+        return;
+
+      } else if (lvl.type === 'fake-wrong') {
+        const bananaElFW = document.getElementById('hidden-banana');
+        if (bananaElFW) bananaElFW.style.display = 'none';
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          <div class="puzzle-eyebrow" style="margin-bottom:6px;">General Knowledge</div>
+          <div class="puzzle-question" style="font-size:20px;color:#fff;margin-bottom:20px;">${lvl.q}</div>
+          <div class="divider"></div>
+          <input class="ans-input" id="ans" type="text" placeholder="your answer…" autocomplete="off" spellcheck="false"/>
+          <button class="submit-btn" id="subBtn">Submit</button>
+          <div id="fwMsg" style="margin-top:14px;font-size:14px;font-weight:600;color:rgba(0,0,0,0);transition:color 0.4s;min-height:20px;"></div>
+        `);
+        const inp = document.getElementById('ans');
+        const btn = document.getElementById('subBtn');
+        const fwMsg = document.getElementById('fwMsg');
+        inp.focus();
+        let submitted = false;
+        function doSubmit() {
+          if (submitted) return;
+          const val = inp.value.trim().toLowerCase();
+          if (val !== lvl.ans.toLowerCase()) {
+            inp.classList.add('wrong', 'shake');
+            setTimeout(() => { inp.classList.remove('wrong','shake'); }, 700);
+            return;
+          }
+          submitted = true;
+          btn.disabled = true;
+          inp.disabled = true;
+          // show wrong first
+          inp.classList.add('wrong');
+          document.body.style.boxShadow = 'inset 0 0 60px rgba(255,50,50,0.18)';
+          // vibrate screen
+          document.body.classList.remove('screen-jolt');
+          void document.body.offsetWidth;
+          document.body.classList.add('screen-jolt');
+          document.body.addEventListener('animationend', () => document.body.classList.remove('screen-jolt'), { once: true });
+          setTimeout(() => {
+            document.body.style.boxShadow = '';
+            inp.classList.remove('wrong');
+            inp.classList.add('correct');
+            fwMsg.style.color = '#00d2ff';
+            fwMsg.textContent = 'just kidding — the answer is correct 😄';
+            setTimeout(() => {
+              state.score += 10; state.level = lvlIdx + 1; save();
+              showComplete(lvlIdx);
+            }, 1800);
+          }, 2000);
+        }
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') doSubmit(); });
+        btn.addEventListener('click', doSubmit);
+        return;
+
+      } else if (lvl.type === 'congrats-card') {
+        const bananaElCG = document.getElementById('hidden-banana');
+        if (bananaElCG) bananaElCG.style.display = 'none';
+        state.score += 10; state.level = lvlIdx + 1; state.revealed = true; save();
+        render(`
+          <div style="font-size:48px;margin-bottom:18px;">🎉</div>
+          <div style="font-size:24px;font-weight:800;color:#fff;margin-bottom:14px;line-height:1.4;">
+            Congratulations!!
+          </div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.4);line-height:1.9;margin-bottom:24px;">
+            You have finally made it to the<br>
+            <span style="color:#00d2ff;font-weight:700;font-size:16px;letter-spacing:2px;">END.</span>
+          </div>
+          <button class="submit-btn" id="theEndBtn" style="letter-spacing:4px;font-size:13px;">THE END</button>
+
+          <div id="endPopup" style="
+            display:none;position:fixed;inset:0;z-index:999;
+            background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);
+            align-items:center;justify-content:center;
+          ">
+            <div style="
+              background:rgba(13,17,23,0.97);
+              border:1px solid rgba(0,210,255,0.25);
+              border-radius:20px;padding:40px 44px;
+              max-width:360px;width:90%;text-align:center;
+              animation:fadeUp 0.35s ease both;
+            ">
+              <div style="font-size:42px;margin-bottom:14px;">😈</div>
+              <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:12px;">
+                Do you really think so?
+              </div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.35);margin-bottom:26px;line-height:1.8;">
+                The chaos has only just begun.
+              </div>
+              <button class="submit-btn" id="chaosBtn" style="letter-spacing:2px;">Continue the Chaos 😈</button>
+            </div>
+          </div>
+        `);
+        document.getElementById('theEndBtn').addEventListener('click', () => {
+          document.getElementById('endPopup').style.display = 'flex';
+        });
+        document.getElementById('chaosBtn').addEventListener('click', () => {
+          document.getElementById('endPopup').style.display = 'none';
+          showLevelCard(lvlIdx + 1);
+        });
+        return;
+
+      } else if (lvl.type === 'blue-btn') {
+        const bananaElBB = document.getElementById('hidden-banana');
+        if (bananaElBB) bananaElBB.style.display = 'none';
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          <div class="puzzle-eyebrow" style="margin-bottom:20px;">Click the blue button.</div>
+          <div style="display:flex;justify-content:center;margin-top:16px;">
+            <button id="redOnlyBtn" style="
+              padding:14px 40px;border-radius:12px;
+              background:rgba(220,50,50,0.18);
+              border:1px solid rgba(220,80,80,0.45);
+              color:#ff6060;font-size:16px;font-weight:600;
+              cursor:pointer;letter-spacing:2px;transition:background 0.2s;
+            ">RED</button>
+          </div>
+          <div id="bbMsg" style="margin-top:20px;font-size:13px;color:rgba(255,255,255,0);transition:color 0.4s;text-align:center;">
+            There is no blue button.
+          </div>
+        `);
+        const redBtn = document.getElementById('redOnlyBtn');
+        const msg = document.getElementById('bbMsg');
+        let redClicks = 0;
+        redBtn.addEventListener('mouseover', () => { redBtn.style.background='rgba(220,50,50,0.28)'; });
+        redBtn.addEventListener('mouseout',  () => { redBtn.style.background='rgba(220,50,50,0.18)'; });
+        redBtn.addEventListener('click', () => {
+          redClicks++;
+          if (redClicks === 1) {
+            msg.style.color = 'rgba(255,255,255,0.45)';
+          } else {
+            state.score += 10; state.level = lvlIdx + 1; save();
+            setTimeout(() => showComplete(lvlIdx), 400);
+          }
+        });
+        return;
+
+      } else if (lvl.type === 'escape-box') {
+        const bananaElEB = document.getElementById('hidden-banana');
+        if (bananaElEB) bananaElEB.style.display = 'none';
+
+        const positions = [
+          'top:20px;left:20px', 'top:20px;right:20px',
+          'bottom:20px;left:20px', 'bottom:20px;right:20px',
+          'top:50%;left:10px;transform:translateY(-50%)',
+          'top:50%;right:10px;transform:translateY(-50%)',
+          'top:10px;left:50%;transform:translateX(-50%)',
+          'bottom:10px;left:50%;transform:translateX(-50%)',
+        ];
+        let posIdx = 0;
+        let clicked = false;
+
+        const noBtnStyle = 'padding:14px 36px;border-radius:12px;background:rgba(220,50,50,0.18);border:1px solid rgba(220,80,80,0.45);color:#ff6060;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:2px;z-index:999;transition:none;';
+
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          <div class="puzzle-eyebrow" style="margin-bottom:16px;">Do you think this game is really fun?</div>
+          <div style="display:flex;gap:16px;justify-content:center;margin-top:8px;">
+            <button id="yesBtn" style="
+              padding:14px 36px;border-radius:12px;
+              background:rgba(0,180,80,0.18);border:1px solid rgba(0,200,100,0.45);
+              color:#00c864;font-size:16px;font-weight:700;
+              cursor:pointer;letter-spacing:2px;transition:background 0.2s;
+            ">YES</button>
+            <button id="noBtn" style="${noBtnStyle}">NO</button>
+          </div>
+        `);
+
+        const noBtn = document.getElementById('noBtn');
+
+        noBtn.addEventListener('click', () => {
+          // first click — detach from flow, jump to first corner
+          if (!clicked) {
+            clicked = true;
+            noBtn.style.cssText = noBtnStyle + 'position:fixed;' + positions[posIdx];
+          } else {
+            posIdx = (posIdx + 1) % positions.length;
+            noBtn.style.cssText = noBtnStyle + 'position:fixed;' + positions[posIdx];
+          }
+        });
+
+        document.getElementById('yesBtn').addEventListener('click', () => {
+          noBtn.remove();
+          state.score += 10; state.level = lvlIdx + 1; save();
+          setTimeout(() => showComplete(lvlIdx), 400);
+        });
+        return;
+
+      } else if (lvl.type === 'patience') {
+        // Handled separately below — render inline
+        const bananaEl2 = document.getElementById('hidden-banana');
+        if (bananaEl2) bananaEl2.style.display = 'none';
+        let clicks = 0;
+        const btnLabels = ['Click Me', 'Stop.', 'Seriously?', 'Fine.'];
+        function renderPatience() {
+          const label = btnLabels[Math.min(clicks, btnLabels.length - 1)];
+          render(`
+            <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+            <div class="puzzle-eyebrow">Puzzle</div>
+            <div class="puzzle-word" style="font-size:22px;letter-spacing:2px;color:rgba(255,255,255,0.85);font-family:inherit;margin-bottom:24px;">Click the button.</div>
+            <button class="submit-btn" id="patienceBtn" style="font-size:15px;letter-spacing:2px;">${label}</button>
+          `);
+          document.getElementById('patienceBtn').addEventListener('click', () => {
+            clicks++;
+            if (clicks >= 3) {
+              state.score += 10; state.level = lvlIdx + 1; save();
+              setTimeout(() => showComplete(lvlIdx), 400);
+            } else {
+              // smooth screen jolt
+              document.body.classList.remove('screen-jolt');
+              void document.body.offsetWidth;
+              document.body.classList.add('screen-jolt');
+              document.body.addEventListener('animationend', () => document.body.classList.remove('screen-jolt'), { once: true });
+              renderPatience();
+            }
+          });
+        }
+        renderPatience();
+        return;
+      } else {
+        questionBlock = lvl.q
+          ? `<div class="puzzle-eyebrow">${lvl.q}</div><div class="puzzle-word">${lvl.word}</div>`
+          : `<div class="puzzle-eyebrow">Type the word below</div><div class="puzzle-word">${lvl.word}</div>`;
+        inputType = 'text';
+      }
+      // show/hide banana hint
+      const bananaEl = document.getElementById('hidden-banana');
+      if (bananaEl) bananaEl.style.display = (lvl.type === 'hidden') ? 'block' : 'none';
+
+      if (inputType === null) {
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          ${questionBlock}
+        `);
+        document.querySelectorAll('.clickbtn-opt').forEach(btn => {
+          btn.addEventListener('mouseover', () => { btn.style.background = 'rgba(0,210,255,0.15)'; });
+          btn.addEventListener('mouseout',  () => { btn.style.background = 'rgba(255,255,255,0.05)'; });
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.clickbtn-opt').forEach(b => b.disabled = true);
+            if (btn.dataset.val === lvl.ans) {
+              btn.style.background = 'rgba(0,200,100,0.2)';
+              btn.style.borderColor = '#00c864';
+              btn.style.color = '#00c864';
+              state.score += 10; state.level = lvlIdx + 1; save();
+              setTimeout(() => showComplete(lvlIdx), 700);
+            } else {
+              btn.style.background = 'rgba(255,50,50,0.15)';
+              btn.style.borderColor = '#ff4444';
+              btn.style.color = '#ff6666';
+              setTimeout(() => {
+                document.querySelectorAll('.clickbtn-opt').forEach(b => { b.disabled = false; b.style.background='rgba(255,255,255,0.05)'; b.style.borderColor='rgba(255,255,255,0.12)'; b.style.color='#fff'; });
+              }, 700);
+            }
+          });
+        });
+      } else {
+        render(`
+          <div class="level-chip">⬡ &nbsp;${chipLabel}</div>
+          ${questionBlock}
+          <div class="divider"></div>
+          <input class="ans-input" id="ans" type="${inputType}" placeholder="your answer…" autocomplete="off" autocorrect="off" spellcheck="false" />
+          <button class="submit-btn" id="subBtn">Submit</button>
+          ${lvl.hint ? `<div class="hint">💡 ${lvl.hint}</div>` : ''}
+        `);
+        const inp = document.getElementById('ans');
+        inp.focus();
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') check(lvlIdx); });
+        document.getElementById('subBtn').addEventListener('click', () => check(lvlIdx));
+      }
+    }
+
+    function check(lvlIdx) {
+      const inp = document.getElementById('ans');
+      if (!inp) return;
+      const val = inp.value.trim().toLowerCase().replace(/\s+/g, ' ');
+      const correct = levels[lvlIdx].ans.toLowerCase().replace(/\s+/g, ' ');
+      const isCorrect = correct === '__any__' ? (val.length > 0 && val !== 'yes') : val === correct;
+      if (isCorrect) {
+        inp.classList.add('correct');
+        state.score += 10;
+        state.level = lvlIdx + 1;
+        save();
+        setTimeout(() => showComplete(lvlIdx), 600);
+      } else {
+        inp.classList.remove('wrong');
+        void inp.offsetWidth;
+        inp.classList.add('wrong', 'shake');
+        setTimeout(() => { inp.classList.remove('wrong','shake'); inp.value = ''; inp.focus(); }, 700);
+      }
+    }
+
+    function triggerGlitch(callback) {
+      const overlay = document.getElementById('glitch-overlay');
+      const noise   = document.getElementById('g-noise');
+      const gr      = document.getElementById('gr');
+      const gb      = document.getElementById('gb');
+      const body    = document.body;
+      const app     = document.getElementById('app');
+
+      overlay.classList.add('active');
+      overlay.style.pointerEvents = 'all';
+
+      let t = 0;
+      const slices = [];
+
+      function randomSlice() {
+        const top = Math.random() * 90;
+        const h   = Math.random() * 8 + 2;
+        const offsetR = (Math.random() - 0.5) * 24;
+        const offsetB = (Math.random() - 0.5) * 24;
+        gr.style.cssText = `top:${top}%;height:${h}%;transform:translateX(${offsetR}px);`;
+        gb.style.cssText = `top:${top}%;height:${h}%;transform:translateX(${offsetB}px);`;
+      }
+
+      function glitchTick() {
+        // body flicker
+        const skew = (Math.random() - 0.5) * 5;
+        const tx   = (Math.random() - 0.5) * 18;
+        app.style.transform = `skewX(${skew}deg) translateX(${tx}px)`;
+        app.style.filter = Math.random() > 0.5
+          ? `hue-rotate(${Math.random()*360}deg) brightness(${0.4 + Math.random()})`
+          : `brightness(${0.2 + Math.random() * 1.5})`;
+
+        noise.style.opacity = Math.random() > 0.4 ? (Math.random() * 0.5).toString() : '0';
+        randomSlice();
+      }
+
+      // rapid fire ticks
+      const iv = setInterval(glitchTick, 60);
+
+      // phase 2: slow down
+      setTimeout(() => {
+        clearInterval(iv);
+        // a few more stutters
+        let stutters = 0;
+        const stutter = setInterval(() => {
+          glitchTick();
+          stutters++;
+          if (stutters >= 4) {
+            clearInterval(stutter);
+            // reset everything
+            app.style.transform = '';
+            app.style.filter = '';
+            noise.style.opacity = '0';
+            gr.style.cssText = '';
+            gb.style.cssText = '';
+            overlay.classList.remove('active');
+            overlay.style.pointerEvents = 'none';
+            callback();
+          }
+        }, 120);
+      }, 900);
+    }
+
+    const nextBtnLabels = [
+      'Proceed Anyway →',
+      'This Seems Safe →',
+      'Continue At Your Own Risk →',
+      'Keep Breaking Reality →',
+      'One More →',
+      'Next Level →',
+      'Sure, Why Not →',
+      'I Regret Nothing →',
+    ];
+    function randomNextBtn() {
+      return nextBtnLabels[Math.floor(Math.random() * nextBtnLabels.length)];
+    }
+
+    const completeComments = [
+      'Nice work — keep going',
+      'Too easy for you 😏',
+      'Brain still intact?',
+      'Smooth. Very smooth.',
+      'You\'re on a roll 🔥',
+      'Don\'t get comfortable.',
+      'Okay okay, not bad.',
+      'Getting warmer…',
+      'Fluke or skill? Let\'s see.',
+      'The vault trembles.',
+      'You\'re built different.',
+      'Still standing. Impressive.',
+      'One step closer to chaos.',
+    ];
+    function randomComment() {
+      return completeComments[Math.floor(Math.random() * completeComments.length)];
+    }
+
+    function showComplete(lvlIdx) {
+      const num = lvlIdx + 1;
+      const isLast = lvlIdx >= levels.length - 1;
+      const isFinalEnd = lvlIdx === 39;
+      if (isFinalEnd) {
+        render(`
+          <div style="font-size:48px;margin-bottom:18px;">🙏</div>
+          <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:16px;line-height:1.6;">
+            You've made it this far,<br>bearing all the chaos.
+          </div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.38);line-height:1.9;margin-bottom:28px;">
+            Hope you enjoyed it.
+          </div>
+          <div class="divider"></div>
+          <div style="display:flex;gap:12px;margin-top:22px;">
+            <button class="submit-btn" id="endFinalBtn" style="letter-spacing:3px;flex:1;">THE END</button>
+            <button class="submit-btn" id="restartFinalBtn" style="letter-spacing:2px;flex:1;border-color:rgba(0,200,100,0.4);color:#00c864;">↺ Restart</button>
+          </div>
+        `);
+        document.getElementById('endFinalBtn').addEventListener('click', () => {
+          app.innerHTML = '<div style="font-size:18px;color:rgba(255,255,255,0.25);letter-spacing:4px;text-transform:uppercase;">Thank you.</div>';
+        });
+        document.getElementById('restartFinalBtn').addEventListener('click', () => {
+          state = { level: 0, score: 0 }; save(); showLanding();
+        });
+        return;
+      }
+
+      const isPlotTwist = lvlIdx === 14;
+      const levelLabel = getLevelLabel(lvlIdx);
+      setTopbar(num);
+
+      if (isPlotTwist) {
+        // Step 1: show normal complete card
+        render(`
+          <span class="complete-icon">🎉</span>
+          <div class="complete-title" id="twist-title">${levelLabel} Complete!</div>
+          <div class="complete-sub" id="twist-sub">${randomComment()}</div>
+          <div class="divider"></div>
+          <div class="score-row"><span>Score</span><span class="score-val">${state.score}</span></div>
+          <div style="margin-top:22px;">
+            <button class="submit-btn" id="nextBtn">${randomNextBtn()}</button>
+          </div>
+        `);
+        // Step 2: after short pause, glitch → alert → morph card
+        const nextBtn = document.getElementById('nextBtn');
+        nextBtn.addEventListener('click', () => {
+          // disable button while sequence plays
+          nextBtn.disabled = true;
+          setTimeout(() => {
+            triggerGlitch(() => {
+              // alert fires after glitch settles
+              setTimeout(() => {
+                alert('⚠️ SYSTEM INSTABILITY DETECTED');
+                // morph the card
+                render(`
+                  <div class="complete-title" style="color:#00d2ff;font-size:20px;line-height:1.5;">
+                    Thanks for your patience.<br>
+                    <span style="color:rgba(255,255,255,0.75);font-size:15px;font-weight:400;letter-spacing:1px;">You are smart enough to continue.</span>
+                  </div>
+                  <div class="divider"></div>
+                  <div style="font-size:17px;color:rgba(255,255,255,0.6);line-height:1.9;margin-bottom:24px;letter-spacing:1px;">
+                    The real <span style="color:#00d2ff;font-weight:800;letter-spacing:3px;">GLITCH</span> starts now.
+                  </div>
+                  <span class="complete-icon">😈</span>
+                  <button class="submit-btn" id="nextBtn2" style="border-color:rgba(0,210,255,0.5);letter-spacing:3px;">Continue →</button>
+                `);
+                document.getElementById('nextBtn2').addEventListener('click', () => showLevelCard(lvlIdx + 1));
+              }, 120);
+            });
+          }, 600);
+        });
+        return;
+      }
+
+      const actionBtn = isLast
+        ? `<button class="submit-btn" id="nextBtn" style="border-color:rgba(0,200,100,0.4);color:#00c864;">↺ &nbsp;Restart</button>`
+        : `<button class="submit-btn" id="nextBtn">${randomNextBtn()}</button>`;
+      const sub = isLast ? 'You completed all levels! 🏆' : randomComment();
+      render(`
+        <span class="complete-icon">${isLast ? '🏆' : '🎉'}</span>
+        <div class="complete-title">${levelLabel} Complete!</div>
+        <div class="complete-sub">${sub}</div>
+        <div class="divider"></div>
+        <div class="score-row"><span>Score</span><span class="score-val">${state.score}</span></div>
+        <div style="margin-top:22px;">${actionBtn}</div>
+      `);
+      if (isLast) {
+        document.getElementById('nextBtn').addEventListener('click', () => {
+          state = { level: 0, score: 0 };
+          save();
+          showLanding();
+        });
+      } else {
+        document.getElementById('nextBtn').addEventListener('click', () => showLevelCard(lvlIdx + 1));
+      }
+    }
+
+    showLanding();
+  </script>
+  <div id="hidden-banana" style="display:none;position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,0.10);letter-spacing:3px;pointer-events:none;z-index:1;">banana</div>
+
+  <div id="sys-msg"></div>
+
+  <script>
+    // ── Fake System Message Engine ──
+    const sysSequences = [
+      // sequence 1 — the classic
+      [
+        { text: 'Checking Reality…',       tone: '',     delay: 0    },
+        { text: 'Reality Check Failed.',   tone: 'err',  delay: 5000 },
+        { text: 'Continuing Anyway.',      tone: 'warn', delay: 10000},
+      ],
+      // sequence 2
+      [
+        { text: 'Scanning Brain Activity…', tone: '',    delay: 0    },
+        { text: 'Signal Weak.',             tone: 'warn',delay: 4000 },
+        { text: 'Proceeding With Caution.', tone: 'ok',  delay: 8000 },
+      ],
+      // sequence 3
+      [
+        { text: 'Verifying Common Sense…',  tone: '',    delay: 0    },
+        { text: 'None Detected.',           tone: 'err', delay: 5000 },
+        { text: 'Impressive.',              tone: 'ok',  delay: 9000 },
+      ],
+      // sequence 4
+      [
+        { text: 'Loading Sanity Module…',   tone: '',    delay: 0    },
+        { text: 'Module Not Found.',        tone: 'err', delay: 4500 },
+        { text: 'Improvising.',             tone: 'warn',delay: 8500 },
+      ],
+      // sequence 5
+      [
+        { text: 'Initializing Logic Core…', tone: '',    delay: 0    },
+        { text: 'Core Overheating.',        tone: 'warn',delay: 5000 },
+        { text: 'Cooled Down. Barely.',     tone: 'ok',  delay: 10000},
+      ],
+      // sequence 6
+      [
+        { text: 'Calibrating Trust Levels…',tone: '',    delay: 0    },
+        { text: 'Trust: 0.00%',             tone: 'err', delay: 4000 },
+        { text: 'That\'s On You.',          tone: 'warn',delay: 8000 },
+      ],
+      // sequence 7
+      [
+        { text: 'Backing Up Your Progress…',tone: '',    delay: 0    },
+        { text: 'Backup Corrupted.',        tone: 'err', delay: 5000 },
+        { text: 'You\'re On Your Own.',     tone: 'warn',delay: 9500 },
+      ],
+      // sequence 8
+      [
+        { text: 'Detecting Skill Level…',   tone: '',    delay: 0    },
+        { text: 'Skill: Questionable.',     tone: 'warn',delay: 4500 },
+        { text: 'We Believe In You. Mostly.',tone:'ok',  delay: 9000 },
+      ],
+    ];
+
+    const sysMsgEl = document.getElementById('sys-msg');
+    let sysRunning = false;
+
+    function runSysSequence() {
+      if (sysRunning) return;
+      sysRunning = true;
+
+      // pick a random sequence
+      const seq = sysSequences[Math.floor(Math.random() * sysSequences.length)];
+      const lineEls = [];
+
+      seq.forEach((item, i) => {
+        setTimeout(() => {
+          const el = document.createElement('div');
+          el.className = 'sys-line' + (item.tone ? ' ' + item.tone : '');
+          el.textContent = item.text;
+          sysMsgEl.appendChild(el);
+          lineEls.push(el);
+          // trigger show on next frame
+          requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+
+          // after last line, hold then fade all out
+          if (i === seq.length - 1) {
+            setTimeout(() => {
+              lineEls.forEach(l => { l.classList.remove('show'); l.classList.add('fade'); });
+              setTimeout(() => {
+                lineEls.forEach(l => l.remove());
+                sysRunning = false;
+                // schedule next sequence — random 18–35s gap
+                setTimeout(runSysSequence, 8000 + Math.random() * 6000);
+              }, 600);
+            }, 3500);
+          }
+        }, item.delay);
+      });
+    }
+
+    // first message fires after 8s so it doesn't interrupt landing screen
+    setTimeout(runSysSequence, 4000);
+  </script>
+</body>
+</html>
