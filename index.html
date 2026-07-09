@@ -1546,18 +1546,23 @@
       } else if (lvl.type === 'blank') {
         const bananaElBL = document.getElementById('hidden-banana');
         if (bananaElBL) bananaElBL.style.display = 'none';
-        // Completely blank screen — just listen for Enter
+        // Completely blank screen — Enter on desktop, tap anywhere on mobile
         app.innerHTML = '';
         document.body.style.background = '#000';
-        const blankHandler = (e) => {
-          if (e.key === 'Enter') {
-            document.removeEventListener('keydown', blankHandler);
-            document.body.style.background = '';
-            state.score += 10; state.level = lvlIdx + 1; save();
-            showComplete(lvlIdx);
-          }
-        };
+        let blankDone = false;
+        function blankComplete() {
+          if (blankDone) return;
+          blankDone = true;
+          document.removeEventListener('keydown', blankHandler);
+          document.removeEventListener('touchend', blankTapHandler);
+          document.body.style.background = '';
+          state.score += 10; state.level = lvlIdx + 1; save();
+          showComplete(lvlIdx);
+        }
+        const blankHandler = (e) => { if (e.key === 'Enter') blankComplete(); };
+        const blankTapHandler = () => blankComplete();
         document.addEventListener('keydown', blankHandler);
+        document.addEventListener('touchend', blankTapHandler);
         return;
 
       } else if (lvl.type === 'fake-wrong') {
